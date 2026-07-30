@@ -2,6 +2,11 @@
 
 Middle-out compression, Pied Piper style. Optimal tip-to-tip efficiency.
 
+**Try it in your browser: [sanjaynandanj.github.io/middleout](https://sanjaynandanj.github.io/middleout/)** —
+the same Rust engines compiled to WebAssembly, running locally in a Web
+Worker. Drop a file, get a Weissman score against your browser's own gzip.
+Nothing is uploaded.
+
 A lossless compression CLI in pure Rust with two engines:
 
 - **`middleout-lz`** (default) — a genuinely middle-out LZ compressor. Fast.
@@ -41,7 +46,7 @@ cargo install --path .
 # Fast LZ engine (default) -> writes notes.txt.mo
 middleout compress notes.txt
 
-# AI engine: much better ratio, ~100x slower
+# AI engine: much better ratio, ~30x slower
 middleout compress notes.txt --ai
 
 # Restore (engine is auto-detected from the file header)
@@ -85,9 +90,9 @@ middleout-ai            10039   16.353      552.8      545.0      0.351
 
 | | `middleout-lz` (default) | `middleout-ai` (`--ai`) |
 |---|---|---|
-| Speed | ~10-20 MB/s | ~0.2-0.3 MB/s |
+| Speed | ~10-20 MB/s | ~0.7 MB/s |
 | Ratio | below gzip | **beats zstd -19** on compressible data |
-| Memory | ~2x input size | ~80 MB + input size |
+| Memory | ~2x input size | ~30 MB + input size |
 | Use when | you want fast and fun | you want the smallest file and can wait |
 
 ## What kinds of files does it work on?
@@ -139,7 +144,8 @@ A miniature PAQ-style context mixer that predicts the input **one bit at a
 time** and codes each bit with a binary arithmetic coder:
 
 1. **Seven predictors** run in parallel: context models of order 0-4
-   (hashed into 4M-entry tables with count-based adaptive learning rates),
+   (hashed into 1M-entry tables with count-based adaptive learning rates
+   and probability + confidence packed into a single u16 per slot),
    a word model (hash of the current alphanumeric run), and a **match model**
    that finds the most recent occurrence of the current 4-byte context and
    predicts whatever byte followed it — confidence scales with match length.
