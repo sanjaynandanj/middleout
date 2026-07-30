@@ -3,6 +3,8 @@ name = "middleout"
 version = "0.1.0"
 edition = "2024"
 description = "Middle-out compression, Pied Piper style. Optimal tip-to-tip efficiency."
+license = "MIT"
+repository = "https://github.com/sanjaynandanj/middleout"
 
 [dependencies]
 anyhow = "1"
