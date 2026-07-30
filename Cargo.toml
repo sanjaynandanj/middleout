@@ -1,0 +1,14 @@
+[package]
+name = "middleout"
+version = "0.1.0"
+edition = "2024"
+description = "Middle-out compression, Pied Piper style. Optimal tip-to-tip efficiency."
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+flate2 = "1"
+zstd = "0.13"
+
+[profile.release]
+lto = true
