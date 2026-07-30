@@ -9,7 +9,7 @@
 
 use crate::arith::{Decoder, Encoder};
 
-const TABLE_BITS: usize = 22;
+const TABLE_BITS: usize = 20;
 const TABLE_SIZE: usize = 1 << TABLE_BITS;
 const TABLE_MASK: usize = TABLE_SIZE - 1;
 const NMODELS: usize = 6;
@@ -55,26 +55,39 @@ fn hash(a: u32, b: u32) -> usize {
     (h ^ (h >> 15)) as usize & TABLE_MASK
 }
 
-/// Adaptive bit model: probability plus a confidence count that slows the
-/// learning rate as evidence accumulates.
+/// Adaptive bit model: a 12-bit probability packed with a 4-bit confidence
+/// count in one u16, so each model touches a single cache line per bit.
+/// The count slows the learning rate as evidence accumulates; the divide is
+/// replaced by a reciprocal multiply.
 struct CtxTable {
-    prob: Vec<u16>,
-    count: Vec<u8>,
+    t: Vec<u16>,
 }
+
+/// RECIP[c] = 65536 / (c + 2)
+const RECIP: [i32; 16] = [
+    32768, 21845, 16384, 13107, 10922, 9362, 8192, 7281, 6553, 5957, 5461, 5041, 4681, 4369,
+    4096, 3855,
+];
 
 impl CtxTable {
     fn new(size: usize) -> Self {
-        CtxTable { prob: vec![2048; size], count: vec![0; size] }
+        CtxTable { t: vec![2048 << 4; size] }
     }
 
+    #[inline]
+    fn prob(&self, idx: usize) -> usize {
+        (self.t[idx] >> 4) as usize
+    }
+
+    #[inline]
     fn update(&mut self, idx: usize, bit: u32) {
+        let v = self.t[idx];
+        let p = (v >> 4) as i32;
+        let c = (v & 15) as i32;
         let target = (bit << 12) as i32;
-        let p = self.prob[idx] as i32;
-        let c = self.count[idx] as i32;
-        self.prob[idx] = (p + (target - p) / (c + 2)) as u16;
-        if self.count[idx] < 30 {
-            self.count[idx] += 1;
-        }
+        let np = p + (((target - p) * RECIP[c as usize]) >> 16);
+        let nc = (c + 1).min(15);
+        self.t[idx] = ((np as u16) << 4) | nc as u16;
     }
 }
 
@@ -97,6 +110,7 @@ struct Mixer {
     match_valid: bool,
     expected_byte: u32,
     match_bit: u32,
+    base: [usize; NMODELS], // per-byte context hashes, refreshed once per byte
     idx: [usize; NMODELS],
     st: [i32; NINPUTS],
     pm: i32, // mixer output (pre-APM), used for weight training
@@ -116,7 +130,7 @@ impl Mixer {
                 apm.push((squash((i - 16) * 128) << 4) as u16);
             }
         }
-        Mixer {
+        let mut mixer = Mixer {
             tables,
             weights: vec![[0.35; NINPUTS]; 256],
             stretch: build_stretch(),
@@ -133,25 +147,35 @@ impl Mixer {
             match_valid: false,
             expected_byte: 0,
             match_bit: 0,
+            base: [0; NMODELS],
             idx: [0; NMODELS],
             st: [0; NINPUTS],
             pm: 2048,
             p: 2048,
-        }
+        };
+        mixer.refresh_bases();
+        mixer
+    }
+
+    fn refresh_bases(&mut self) {
+        self.base[1] = hash(self.c4 & 0xFF, 0x01);
+        self.base[2] = hash(self.c4 & 0xFFFF, 0x02);
+        self.base[3] = hash(self.c4 & 0xFF_FFFF, 0x03);
+        self.base[4] = hash(self.c4, 0x04);
+        self.base[5] = hash(self.word, 0x05);
     }
 
     fn predict(&mut self) -> u16 {
+        let c0mix = self.c0 as usize * 0x02ED;
         self.idx[0] = self.c0 as usize;
-        self.idx[1] = hash(self.c4 & 0xFF, self.c0);
-        self.idx[2] = hash(self.c4 & 0xFFFF, self.c0 ^ 0x0555_0000);
-        self.idx[3] = hash(self.c4 & 0xFF_FFFF, self.c0 ^ 0x0AAA_0000);
-        self.idx[4] = hash(self.c4, self.c0 ^ 0x0333_0000);
-        self.idx[5] = hash(self.word, self.c0 ^ 0x0CCC_0000);
+        for i in 1..NMODELS {
+            self.idx[i] = (self.base[i] + c0mix) & TABLE_MASK;
+        }
 
         let w = &self.weights[self.c0 as usize & 0xFF];
         let mut dot = 0.0f32;
         for i in 0..NMODELS {
-            let pr = self.tables[i].prob[self.idx[i]] as usize;
+            let pr = self.tables[i].prob(self.idx[i]);
             self.st[i] = self.stretch[pr] as i32;
             dot += w[i] * self.st[i] as f32;
         }
@@ -236,6 +260,7 @@ impl Mixer {
                     self.expected_byte = self.buf[self.match_ptr] as u32;
                 }
             }
+            self.refresh_bases();
         }
     }
 }

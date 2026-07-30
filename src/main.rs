@@ -1,10 +1,7 @@
-mod arith;
 mod bench;
-mod codec;
-mod lz;
-mod model;
 
 use anyhow::{Context, Result};
+use middleout::codec;
 use clap::{Parser, Subcommand};
 use std::path::{Path, PathBuf};
 use std::time::Instant;

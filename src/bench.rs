@@ -2,8 +2,8 @@
 //! Weissman score: W = alpha * (r / r_ref) * (log T_ref / log T),
 //! alpha = 1, times in milliseconds, gzip -6 as the reference codec.
 
-use crate::codec;
 use anyhow::{Context, Result, ensure};
+use middleout::codec;
 use flate2::Compression;
 use flate2::write::GzEncoder;
 use std::io::Write;

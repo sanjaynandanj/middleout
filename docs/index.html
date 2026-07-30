@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>middleout — Pied Piper style compression</title>
+<style>
+  :root {
+    --green: #6cbe45;
+    --green-dim: #4e8f33;
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #2d333b;
+    --text: #c9d1d9;
+    --muted: #768390;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    background: var(--bg); color: var(--text);
+    font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 2rem 1rem 4rem;
+  }
+  h1 { color: var(--green); margin: 0; font-size: 2.2rem; letter-spacing: -1px; }
+  .tagline { color: var(--muted); margin: .4rem 0 2rem; }
+  .card {
+    width: 100%; max-width: 680px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; margin-bottom: 1.2rem;
+  }
+  #drop {
+    border: 2px dashed var(--green-dim); border-radius: 10px;
+    padding: 3rem 1rem; text-align: center; cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  #drop.hover { border-color: var(--green); background: #16211a; }
+  #drop p { margin: .3rem 0; }
+  #drop .big { font-size: 1.1rem; color: var(--green); }
+  .engines { display: flex; gap: 1.5rem; margin-top: 1.2rem; flex-wrap: wrap; }
+  .engines label { cursor: pointer; display: flex; gap: .5rem; align-items: baseline; }
+  .engines input { accent-color: var(--green); }
+  .engines small { color: var(--muted); }
+  #status { color: var(--green); min-height: 1.4em; margin-top: 1rem; }
+  #status.error { color: #f85149; }
+  .blink::after { content: "▋"; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  table { width: 100%; border-collapse: collapse; margin-top: .5rem; }
+  th, td { text-align: right; padding: .45rem .6rem; border-bottom: 1px solid var(--border); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: normal; }
+  td.win { color: var(--green); font-weight: bold; }
+  .weissman {
+    display: flex; align-items: baseline; gap: 1rem; margin-top: 1.2rem;
+  }
+  .weissman .score { font-size: 2.6rem; color: var(--green); }
+  .weissman .label { color: var(--muted); }
+  button {
+    background: var(--green-dim); color: #fff; border: 0; border-radius: 6px;
+    padding: .6rem 1.2rem; font-family: inherit; font-size: 1rem;
+    cursor: pointer; margin-top: 1.2rem;
+  }
+  button:hover { background: var(--green); }
+  .hidden { display: none; }
+  footer { color: var(--muted); margin-top: 2rem; font-size: .85rem; text-align: center; }
+  footer a { color: var(--green); }
+</style>
+</head>
+<body>
+  <h1>middleout</h1>
+  <p class="tagline">middle-out compression — optimal tip-to-tip efficiency</p>
+
+  <div class="card">
+    <div id="drop">
+      <p class="big">drop a file here</p>
+      <p>or click to choose — drop a <b>.mo</b> file to decompress</p>
+      <p><small style="color:var(--muted)">everything runs locally in your browser; nothing is uploaded</small></p>
+    </div>
+    <input type="file" id="file" class="hidden">
+    <div class="engines">
+      <label><input type="radio" name="engine" value="lz" checked>
+        middle-out LZ <small>fast</small></label>
+      <label><input type="radio" name="engine" value="ai">
+        the Box (AI) <small>context mixing, slow &amp; dense</small></label>
+    </div>
+    <div id="status"></div>
+  </div>
+
+  <div class="card hidden" id="results">
+    <div id="restable"></div>
+    <div class="weissman hidden" id="wblock">
+      <span class="score" id="wscore"></span>
+      <span class="label">Weissman score<br>vs your browser's gzip</span>
+    </div>
+    <button id="download"></button>
+  </div>
+
+  <footer>
+    W = &alpha; &middot; (r / r&#772;) &middot; (log T&#772; / log T), &alpha; = 1, gzip reference<br>
+    <a href="https://github.com/sanjaynandanj/middleout">source on GitHub</a>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
