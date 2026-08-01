@@ -1,5 +1,6 @@
 pub mod arith;
 pub mod codec;
+pub mod lstm;
 pub mod lz;
 pub mod model;
 

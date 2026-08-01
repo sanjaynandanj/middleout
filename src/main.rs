@@ -12,8 +12,10 @@ use std::time::Instant;
     version,
     about = "Middle-out compression, Pied Piper style.",
     long_about = "Middle-out compression, Pied Piper style.\n\
-                  Default engine: middle-out LZ (fast). --ai switches to an\n\
-                  online-learning context-mixing model (slow, dense)."
+                  Default engine: middle-out LZ (fast). --ai switches to a\n\
+                  neural context-mixing model: 11 predictors including an\n\
+                  online-trained LSTM, a two-layer mixer network, and a\n\
+                  two-stage SSE chain (slow, dense)."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -73,7 +75,7 @@ fn cmd_compress(input: &Path, output: Option<PathBuf>, ai: bool) -> Result<()> {
         container.len(),
         ratio,
         elapsed.as_secs_f64() * 1000.0,
-        if ai { "ai context-mixer" } else { "middle-out lz" },
+        if ai { "neural context-mixer" } else { "middle-out lz" },
     );
     Ok(())
 }
