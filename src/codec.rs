@@ -1,5 +1,7 @@
 //! Container format: "MOUT" | mode u8 | original_len u64 LE | payload.
-//! Modes: 0 = stored raw, 1 = middle-out LZ, 2 = AI context mixer.
+//! Modes: 0 = stored raw, 1 = middle-out LZ, 3 = neural AI context mixer
+//! (mode 2 was the v1 AI engine; its bitstream is incompatible and is
+//! rejected with a clear error rather than silently mis-decoded).
 
 use crate::{lz, model};
 use anyhow::{Result, bail, ensure};
@@ -10,7 +12,7 @@ pub const MAGIC: &[u8; 4] = b"MOUT";
 pub enum Mode {
     Raw = 0,
     Lz = 1,
-    Ai = 2,
+    Ai = 3,
 }
 
 pub fn compress(data: &[u8], ai: bool) -> Vec<u8> {
@@ -44,7 +46,8 @@ pub fn decompress(container: &[u8]) -> Result<Vec<u8>> {
             payload.to_vec()
         }
         1 => lz::decompress(payload, orig_len)?,
-        2 => model::decompress(payload, orig_len),
+        2 => bail!("compressed with the middleout v1 AI engine; re-compress with this version"),
+        3 => model::decompress(payload, orig_len),
         m => bail!("unknown mode byte {m}"),
     };
     ensure!(out.len() == orig_len, "decompressed length mismatch");
